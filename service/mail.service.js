@@ -12,9 +12,9 @@ export async function sendMail(to_email, activationLink) {
         }
     })
     const info = await transporter.sendMail({
-        from: 'Активация акаунта<alex_kuz84@mail.ru>',
+        from: 'Активация аккаунта<mail@mail.ru>',
         to: to_email,
-        subject: 'Активация акаунта',
+        subject: 'Активация аккаунта',
         // text: 'Просто текст',
         html: 
         `
