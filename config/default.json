@@ -1,0 +1,8 @@
+{
+    "PORT": 3000,
+    "DB_URL": "mongodb://localhost/mydb",
+    "JWT_ACCESS_SECRET": "jwt-secret",
+    "JWT_REFRESH_SECRET": "jwt-refresh-secret",
+    "SERVER_URL": "http://localhost:3000/",
+    "CLIENT_URL": "http://localhost:5000/"
+}
