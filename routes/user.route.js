@@ -7,8 +7,10 @@ import { v4 as uuidv4 } from 'uuid'
 import { User } from '../models/user.model.js'
 
 import { sendMail } from "../service/mail.service.js"
-import { generateToken, tokenSaveDB } from "../service/token.service.js"
-import { findUser, userSaveDB } from "../service/user.service.js"
+import { generateToken, tokenSaveDB, validateAccessToken } from "../service/token.service.js"
+import { findUser, isUserActivate, userSaveDB } from "../service/user.service.js"
+
+import jwt from 'jsonwebtoken'
 
 export const routerUser = Router()
 
@@ -51,28 +53,11 @@ routerUser.post('/register', async (req, res) => {
         // Запись user в БД
         const user = await userSaveDB( {...req.body, password:hashedPassword}, activationLink )
 
-        // Генерируем accessToken
-        const accessToken = generateToken(user.id, config.get('JWT_ACCESS_SECRET'), '30m')
-
-        // Генерируем refreshToken
-        const refreshToken = generateToken(user.id, config.get('JWT_REFRESH_SECRET'), '30d')
         
-        // Записываем в БД refreshToken
-        await tokenSaveDB(user.id, refreshToken)
-
-        // refreshToken будем хранить в cookie
-        // res.cookie('refreshToken', refreshToken, {
-        //     // Время жизни 30д
-        //     maxAge: 30 * 24 * 60 * 60 * 1000,
-        //     // Cookie нельзя изменять
-        //     httpOnly: true
-        // })
 
         // Ответ клиенту
         res.status(201).json({
-            email,
-            accessToken,
-            refreshToken
+            email
         })
     } catch (error) {
         res.status(500).json({
@@ -86,9 +71,8 @@ routerUser.post('/login', async (req, res) => {
         const {email, password} = req.body
 
         // Ищем зарегистрированного user в БД по email
-        const user = await User.findOne({
-            email: email
-        })
+        const user = await findUser('email', email)
+        
         // Проверка на существование пользователя
         if (!user) {
             return res.status(400).json({
@@ -104,18 +88,37 @@ routerUser.post('/login', async (req, res) => {
             })
         }
 
-        // авторизация через JWT Token
-        const tokenJWT = jwt.sign(
-            {userId: user.id},
-            config.get('jwtSecret'),
-            // Срок действия tokenJWT - 1 час
-            {expiresIn: '1h'}
-        )
+        // Проверка активации аккаунта
+        const isUserActive = await isUserActivate(email)
+        if(!isUserActive) {
+            return res.status(500).json({
+                message: 'Аккаунт не активирован'  
+            })          
+        }
+
+        // Генерируем accessToken
+        const accessToken = generateToken(user.id, config.get('JWT_ACCESS_SECRET'), '2m')
+
+        // Генерируем refreshToken
+        const refreshToken = generateToken(user.id, config.get('JWT_REFRESH_SECRET'), '30d')
+        
+        // Записываем в БД refreshToken
+        await tokenSaveDB(user.id, refreshToken)
+
+        // refreshToken будем хранить в cookie
+        res.cookie('refreshToken', refreshToken, {
+            // Время жизни 30д
+            maxAge: 30 * 24 * 60 * 60 * 1000,
+            // Cookie нельзя изменять
+            httpOnly: true
+        })
+
 
         // Ответ клиенту status по умолчанию 200
         res.json({
-            userId: user.id,
-            token: tokenJWT
+            email: email,
+            accessToken,
+            refreshToken
         })
 
 
@@ -150,4 +153,28 @@ routerUser.get('/activate/:link', async (req, res) => {
         })                
     }
     
+})
+
+routerUser.post('/token', async (req, res) => {
+    try {
+        const {token} = req.body
+        console.log('2')
+        const data = validateAccessToken(token)
+        if(!data) {
+            return res.status(200).json({
+                message: "refresh"
+            })            
+        }
+
+        
+
+        // Ответ клиенту
+        res.status(200).json({
+            message: "TOKEN"
+        })
+    } catch (error) {
+        res.status(500).json({
+            message: 'Ошибка token'
+        })        
+    }
 })

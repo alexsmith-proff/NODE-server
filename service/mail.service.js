@@ -7,8 +7,8 @@ export async function sendMail(to_email, activationLink) {
         port: 465,
         secure: true,
         auth: {
-            user: 'alex_kuz84@mail.ru',
-            pass: '19dxg74xhCfQ5f5Fi1Kv'
+            user: 'mail@mail.ru',
+            pass: 'password'
         }
     })
     const info = await transporter.sendMail({

@@ -24,3 +24,16 @@ export async function userSaveDB(userData, link) {
 
     return user
 }
+
+// Проверяет активирован пользьзователь
+export async function isUserActivate(email) {
+    const userN = await User.findOne({
+        email: email
+    })
+    if(userN.isActivated) {
+        return true
+    }else {
+        return false
+    }
+
+}
